@@ -27,10 +27,6 @@ const createUser = async (req, res) => {
 
             const user = await User.create({ fullname, email, password });
 
-            // user.userID = user._id.toString(); Set userID to the string representation of _id
-            // await user.save(); Save the updated user document
-
-
             res.status(201).send({
                 data: user, // Include the created user data in the response
                 message: "User created successfully",
