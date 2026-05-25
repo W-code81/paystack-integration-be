@@ -1,37 +1,30 @@
 const User = require("../models/user")
 const paystack = require("paystack-api")(process.env.API_KEY);
 
-// Paystack webhook helpers: Functions that should be called on paystack event updates
-// invoicePaymentFailed, invoiceCreation, invoiceUpdate, subscriptionNotRenewed, subscriptionDisabled, chargeSuccess
-
 const chargeSuccess = async (data) => {
     try {
-        const output = data.data; // Get the data object from the webhook payload
-        const reference = output.reference; // Extract the reference from the data object
-        // console.log(output);
+        const output = data.data;
+        const reference = output.reference;
 
         const user = await User.findOne({ paystack_ref: reference });
-        const userId = user._id; // Get the user ID from the user document
+        if (!user) return console.log("User not found for reference:", reference); // null check
+
+        const userId = user._id;
         console.log("Updating charge status");
 
-        if (user.paystack_ref == "success") // if the charge has already been marked as successful, do not update again
-            return ({
-                data: {},
-                message: "Transaction has been verified",
-                status: 1,
-            });
+        if (user.paystack_ref == "success")
+            return console.log("Transaction already verified");
 
-        const response = await paystack.transaction.verify({ // Verify the transaction using the reference
+        const response = await paystack.transaction.verify({
             reference: user.paystack_ref
-        })
+        });
 
         if (response.data.status == "success") {
-            const data = {
+            const updateData = { // renamed from data
                 paystack_ref: response.data.status,
                 amountDonated: output.amount,
-            }
-            await User.findByIdAndUpdate(userId, data);
-
+            };
+            await User.findByIdAndUpdate(userId, updateData);
             console.log("Charge Successful");
         } else {
             console.log("Charge Unsuccessful");
@@ -42,30 +35,23 @@ const chargeSuccess = async (data) => {
     }
 };
 
-// succesful subscription
 const planChargeSuccess = async (data) => {
     try {
         const output = data.data;
         const reference = output.reference;
-        // console.log(output);
 
         const user = await User.findOne({ paystack_ref: reference });
-        const userId = user._id;
-        // console.log(user, reference);
+        if (!user) return console.log("User not found for reference:", reference); // null check
 
+        const userId = user._id;
         console.log("Updating charge status");
 
-        // subscribe for user
-        if (user.paystack_ref == "success") // if the charge has already been marked as successful, do not update again
-            return ({
-                data: {},
-                message: "Transaction has been verified",
-                status: 1,
-            });
+        if (user.paystack_ref == "success")
+            return console.log("Transaction already verified");
 
-        const response = await paystack.transaction.verify({ // Verify the transaction using the reference
+        const response = await paystack.transaction.verify({
             reference: user.paystack_ref
-        })
+        });
 
         if (response.data.status == "success") {
             await User.findByIdAndUpdate(userId, {
@@ -84,21 +70,20 @@ const planChargeSuccess = async (data) => {
     }
 };
 
-// invoicePaymentFailed
 const cancelSubscription = async (data) => {
     try {
         const output = data.data;
         const reference = output.reference;
-        // console.log(output);
 
         const user = await User.findOne({ paystack_ref: reference });
-        const userId = user._id;
+        if (!user) return console.log("User not found for reference:", reference); // null check
 
+        const userId = user._id;
         console.log("Cancelling subscription...");
 
         await User.findByIdAndUpdate(userId, {
-            isSubscribed: true,
-            paystack_ref: response.data.status,
+            isSubscribed: false,
+            paystack_ref: "cancelled", 
             planName: "cancelled",
         });
         console.log("User Subscription Cancelled");
