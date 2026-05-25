@@ -1,6 +1,7 @@
 const mongoose = require("mongoose")
 const User = require("../models/user")
 const paystack = require("paystack-api")(process.env.API_KEY)
+const bcrypt = require("bcrypt")
 
 const getUser = async (req, res) => {
         try {
@@ -21,11 +22,13 @@ const createUser = async (req, res) => {
         try {
             const { fullname, email, password } = req.body;
 
-            if (!fullname || !email || !password) {
-                return res.status(400).json({ message: "User creation failed" });
-            }
+            if (!fullname) return res.status(400).json({ message: "Full name is required" });
+            if (!email) return res.status(400).json({ message: "Email is required" });
+            if (!password) return res.status(400).json({ message: "Password is required" });
 
-            const user = await User.create({ fullname, email, password });
+            const hashedPassword = await bcrypt.hash(password, 10); // Hash the password
+
+            const user = await User.create({ fullname, email, password: hashedPassword }); // Create a new user with the hashed password
 
             res.status(201).send({
                 data: user, // Include the created user data in the response
@@ -33,6 +36,9 @@ const createUser = async (req, res) => {
                 status: 0, // You can use a status code to indicate success or failure (0 for success, 1 for failure)
             });
         } catch (error) {
+
+            console.log("Error code : ", error.code);
+            console.log("Error message : ", error.message);
 
             if (error.code === 11000 //duplicate key error code for MongoDB
                 || error.message.includes("already exists")
@@ -83,6 +89,10 @@ const initializeTrans = async (req, res) => {
         let { id } = req.params;
         const { email, amount, plan, } = req.body;
 
+        if (!email) return res.status(400).json({ message: "Email is required" });
+        if (!amount) return res.status(400).json({ message: "Amount is required" });
+        if (!plan) return res.status(400).json({ message: "Plan is required" });
+
         const response = await paystack.transaction.initialize({ // Initialize a transaction
             email,
             amount,
@@ -111,6 +121,8 @@ const verifyTrans = async (req, res) => {
         let { id } = req.params;
 
         const user = await User.findById(id);
+
+        if (!user) return res.status(404).json({ message: "User not found" });
 
         if (user.paystack_ref == "success") // If the transaction has already been verified, return a success response without making another API call to Paystack
             return res.status(200).send({
