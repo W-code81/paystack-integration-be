@@ -23,12 +23,12 @@ app.get("/", (req, res) =>{
     res.json({message: "Hello World!"});
 })
 
-if (process.env.NODE_ENV == "development") {
-    (async function () {
-        const url = await ngrok.connect({ addr: process.env.PORT, authtoken_from_env: true, authtoken: process.env.NGROK_AUTHTOKEN });
-        console.log(`Ingress established at: ${url}`);
-    })();
-} 
+// if (process.env.NODE_ENV == "development") {
+//     (async function () {
+//         const url = await ngrok.connect({ addr: process.env.PORT, authtoken_from_env: true, authtoken: process.env.NGROK_AUTHTOKEN });
+//         console.log(`Ingress established at: ${url}`);
+//     })();
+// } 
 
 app.listen(port ,()=>{
     console.log(`Server is running on port ${port}`);
