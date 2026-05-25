@@ -2,14 +2,13 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 
 const userSchema = new mongoose.Schema({
-    fullname: { type: String, required: [true, 'Full name is required'] },
+    fullname: { type: String, required: [true, 'Full name is required'] , trim: true },
     email: {
         type: String,
         required: [true, 'Email address is required'],
         unique: true,
         lowercase: true, // Automatically converts to lowercase
         trim: true,      // Removes whitespace
-        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address'],
         validate: {
             validator: function (value) {
                 return validator.isEmail(value);
