@@ -55,13 +55,13 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
         try {
             let { id } = req.params;
-            const { fullname, email, password } = req.body;
-            const user = await User.findByIdAndUpdate(id, { fullname, email, password }, { new: true }); //new: true option returns the updated document
+        const { fullname, email, password } = req.body;
 
-            if (!user) {
-                return res.status(404).json({ message: "User not found" });
-            }
+        //hash the password if it's being updated
+        const updateData = { fullname, email };
+        if (password) updateData.password = await bcrypt.hash(password, 10);
 
+        const user = await User.findByIdAndUpdate(id, updateData, { new: true });
             res.status(200).json({ data: user, message: "User updated successfully", status: 0 });
         } catch (error) {
             res.status(500).json({ message: error.message });
@@ -88,6 +88,9 @@ const initializeTrans = async (req, res) => {
     try {
         let { id } = req.params;
         const { email, amount, plan, } = req.body;
+
+        const user = await User.findById(id);
+        if (!user) return res.status(404).json({ message: "User not found" });
 
         if (!email) return res.status(400).json({ message: "Email is required" });
         if (!amount) return res.status(400).json({ message: "Amount is required" });
