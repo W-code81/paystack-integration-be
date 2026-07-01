@@ -85,38 +85,46 @@ const deleteUser = async (req, res) => {
 
 // initialize transaction
 const initializeTrans = async (req, res) => {
-    try {
-        let { id } = req.params;
-        const { email, amount, plan, } = req.body;
+  try {
+    const { id } = req.params;
+    const { email, plan } = req.body;
 
-        const user = await User.findById(id);
-        if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-        if (!email) return res.status(400).json({ message: "Email is required" });
-        if (!amount) return res.status(400).json({ message: "Amount is required" });
-        if (!plan) return res.status(400).json({ message: "Plan is required" });
+    if (!email) return res.status(400).json({ message: "Email is required" });
+    if (!plan) return res.status(400).json({ message: "Plan is required" });
 
-        const response = await paystack.transaction.initialize({ // Initialize a transaction
-            email,
-            amount,
-            plan, //for subscriptions
-        });
- 
-        const data = { // Update the user document with the transaction reference
-            paystack_ref: response.data.reference, // Store the Paystack transaction reference in the user document
-        };
+    // validate plan on backend — never trust frontend amount
+    const plansResponse = await paystack.plan.list();
+    const validPlan = plansResponse.data.find(p => p.plan_code === plan);
 
-        await User.findByIdAndUpdate(id, data); // Update the user document with the transaction reference
-
-        res.status(200).send({
-            data: response.data,
-            message: response.message,
-            status: response.status,
-        });
-
-    } catch (error) {
-        res.status(400).send({ data: {}, error: `${error.message}`, status: 1 });
+    if (!validPlan) {
+      return res.status(400).json({ message: "Invalid plan selected" });
     }
+
+    const verifiedAmount = validPlan.amount; // use Paystack's amount, not frontend's
+
+    const response = await paystack.transaction.initialize({
+      email,
+      amount: verifiedAmount,
+      plan,
+      callback_url: `${process.env.LOCAL_URL}/paystack/payment/callback`,
+    });
+
+    await User.findByIdAndUpdate(id, {
+      paystack_ref: response.data.reference,
+    });
+
+    res.status(200).json({
+      data: response.data,
+      message: response.message,
+      status: response.status,
+    });
+
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 };
 
 const verifyTrans = async (req, res) => {
