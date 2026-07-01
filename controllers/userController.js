@@ -109,7 +109,7 @@ const initializeTrans = async (req, res) => {
       email,
       amount: verifiedAmount,
       plan,
-      callback_url: `${process.env.LOCAL_URL}/paystack/payment/callback`,
+      callback_url: `${process.env.LOCAL_URL}/paystack/payment/callback`, //local can be changed to your host url
     });
 
     await User.findByIdAndUpdate(id, {
